@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import grafica, seccion %}
+{% block titulo %}Modelo{% endblock %}
+{% block encabezado %}Modelo{% endblock %}
+{% block descripcion %}{{ info_modelo.tarea }} del total (kg). Entrenamiento: {{ info_modelo.filas_entrenamiento|miles }} filas. Prueba: {{ info_modelo.filas_prueba|miles }} filas de atletas que el modelo no vio.{% endblock %}
+{% block contenido %}
+{% set criterio = info_modelo.criterio_exito %}
+
+<div class="alert {{ 'alert-success' if criterio.cumple else 'alert-danger' }} shadow-sm">
+  <strong>Criterio de éxito:</strong> reducir el MAE de la línea base en al menos {{ criterio['mejora_MAE_minima_%'] }} % y lograr un R² de al menos {{ criterio['R2_minimo']|coma(2) }}.
+  <strong>{{ 'Se cumple.' if criterio.cumple else 'No se cumple.' }}</strong>
+</div>
+
+{{ seccion('Comparación de modelos') }}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white fw-semibold">Métricas en el conjunto de prueba</div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead><tr><th>Modelo</th><th class="text-end">MAE (kg)</th><th class="text-end">RMSE (kg)</th><th class="text-end">R²</th><th class="text-end">Mejora del MAE</th><th class="text-end">Entrenamiento</th></tr></thead>
+          <tbody>
+            {% for fila in info_modelo.comparacion %}
+            <tr class="{{ 'table-primary fw-semibold' if fila.modelo == info_modelo.algoritmo }}">
+              <td>{{ fila.modelo }}{% if fila.modelo == info_modelo.algoritmo %} <span class="badge text-bg-primary">Mejor</span>{% endif %}</td>
+              <td class="text-end">{{ fila['MAE']|coma }}</td>
+              <td class="text-end">{{ fila['RMSE']|coma }}</td>
+              <td class="text-end">{{ fila['R2']|coma(3) }}</td>
+              <td class="text-end">{{ fila['mejora_MAE_%']|coma }} %</td>
+              <td class="text-end">{{ fila['segundos_entrenamiento']|coma }} s</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer bg-white small text-secondary">
+        MAE: error promedio en kg. RMSE: castiga más los errores grandes. R²: parte de la variación que explica el modelo.
+        {% if info_modelo.rango_cuantiles %}
+        Rango del predictor (modelos de cuantiles P10, P50 y P90): el {{ info_modelo.rango_cuantiles['cobertura_P10_P90_%']|coma }} % de los totales reales de prueba cae dentro del rango (lo esperado es 80 %).
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">{{ grafica('g_comparacion', 'Error absoluto medio (menos es mejor)', grafica_comparacion) }}</div>
+</div>
+
+{{ seccion('Variables más importantes', 'Cuánto empeora el error del modelo si se desordena cada variable.') }}
+{{ grafica('g_importancia', 'Importancia por permutación', grafica_importancia) }}
+
+{{ seccion('Estimar el total de un atleta', 'El modelo guardado se usa tal cual; no se reentrena.') }}
+<form method="post" action="{{ url_for('pagina_modelo') }}#estimacion" class="card shadow-sm" id="estimacion">
+  <div class="card-body">
+    <div class="row g-3 align-items-end">
+      <div class="col-6 col-md-3">
+        <label class="form-label" for="m_sexo">Sexo</label>
+        <select class="form-select" id="m_sexo" name="sexo">{% for o in ['Hombres', 'Mujeres'] %}<option {{ 'selected' if entrada.sexo == o }}>{{ o }}</option>{% endfor %}</select>
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label" for="m_equipo">Equipo</label>
+        <select class="form-select" id="m_equipo" name="equipo">{% for o in ['Raw', 'Single-ply'] %}<option {{ 'selected' if entrada.equipo == o }}>{{ o }}</option>{% endfor %}</select>
+      </div>
+      <div class="col-6 col-md-3"><label class="form-label" for="m_anio">Año de la competencia</label><input class="form-control" type="number" id="m_anio" name="anio" min="1970" max="2030" value="{{ entrada.anio }}"></div>
+      <div class="col-6 col-md-3"><label class="form-label" for="m_edad">Edad (años)</label><input class="form-control" type="number" id="m_edad" name="edad" min="10" max="85" value="{{ entrada.edad }}"></div>
+      <div class="col-6 col-md-3"><label class="form-label" for="m_peso">Peso corporal (kg)</label><input class="form-control" type="number" id="m_peso" name="peso" min="30" max="200" step="0.5" value="{{ entrada.peso }}"></div>
+      <div class="col-6 col-md-3"><label class="form-label" for="m_previas">Competencias previas</label><input class="form-control" type="number" id="m_previas" name="previas" min="0" max="200" value="{{ entrada.previas }}"></div>
+      <div class="col-6 col-md-3"><label class="form-label" for="m_experiencia">Años desde su primera competencia</label><input class="form-control" type="number" id="m_experiencia" name="experiencia" min="0" max="50" step="0.5" value="{{ entrada.experiencia }}"></div>
+      <div class="col-6 col-md-3 d-grid"><button class="btn btn-primary" type="submit"><i class="bi bi-calculator"></i> Estimar total</button></div>
+    </div>
+    {% if estimado is not none %}
+    <div class="alert alert-success text-center mt-4 mb-0">
+      <div class="small text-uppercase fw-semibold">Total estimado</div>
+      <div class="display-5 fw-bold">{{ estimado|coma }} kg</div>
+      <div>Rango típico (± MAE): {{ (estimado - mae)|coma(0) }} a {{ (estimado + mae)|coma(0) }} kg</div>
+      <div class="small text-secondary mt-1">Es lo que levanta un atleta típico con esas características. No es una predicción exacta de una persona.</div>
+    </div>
+    {% endif %}
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,73 @@
+# Proyecto final Big Data: procesamiento + MongoDB + dashboard
+# Uso:  docker compose up --build
+
+services:
+
+  # Base de datos de insights
+  mongo:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    ports:
+      - "${PUERTO_MONGO:-27017}:27017"
+    volumes:
+      - mongo_datos:/data/db            # persistencia de MongoDB
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Jupyter + pandas: descarga, ETL, modelo, MongoDB y PDF
+  procesamiento:
+    build: .
+    environment:
+      MONGO_HOST: mongo                 # nombre del servicio en la red de Docker
+      MONGO_PORT: 27017
+      MONGO_USER: ${MONGO_USER}
+      MONGO_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_DB: ${MONGO_DB}
+      JUPYTER_TOKEN: ${JUPYTER_TOKEN}
+    ports:
+      - "${PUERTO_JUPYTER:-8888}:8888"
+    volumes:
+      - ./data:/proyecto/data
+      - ./models:/proyecto/models
+      - ./reports:/proyecto/reports
+      - ./notebooks:/proyecto/notebooks
+      - ./src:/proyecto/src
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      # El pipeline crea este archivo cuando termina
+      test: ["CMD", "test", "-f", "/proyecto/reports/.pipeline_ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 360                      # espera hasta 1 hora (descarga + procesamiento)
+
+  # Dashboard web (Flask + Bootstrap 5): solo lee resultados
+  app:
+    build: ./app
+    environment:
+      DIR_PROYECTO: /proyecto
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
+      MONGO_USER: ${MONGO_USER}
+      MONGO_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_DB: ${MONGO_DB}
+    ports:
+      - "${PUERTO_APP:-8501}:8501"
+    volumes:
+      - ./data/processed:/proyecto/data/processed:ro
+      - ./models:/proyecto/models:ro
+      - ./reports:/proyecto/reports:ro
+    depends_on:
+      mongo:
+        condition: service_healthy
+      procesamiento:
+        condition: service_healthy      # arranca cuando el pipeline terminó
+
+volumes:
+  mongo_datos:

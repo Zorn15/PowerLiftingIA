@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import tabla, filtros_form %}
+{% block titulo %}Datos{% endblock %}
+{% block encabezado %}Datos{% endblock %}
+{% block descripcion %}Dataset limpio, tablas de agregación (cubos OLAP) y pasos del ETL.{% endblock %}
+{% block contenido %}
+{{ filtros_form(filtros, participaciones) }}
+
+{{ tabla('Muestra del dataset limpio', tabla_muestra, 'Hasta ' ~ filas_tabla ~ ' filas al azar de las que cumplen los filtros.') }}
+{{ tabla('Cubo de participación', tabla_cubo, 'Año × sexo × equipo × continente × país, con los mismos filtros. ' ~ filas_cubo|miles ~ ' combinaciones; se muestran las ' ~ filas_tabla ~ ' con más participaciones.') }}
+{{ tabla('Cubo de rendimiento', tabla_rendimiento, 'Grupo de edad × sexo × equipo × continente. Competencias completas con resultado válido, todos los años.') }}
+{{ tabla('Pasos del ETL', tabla_etl, 'Qué se hizo en cada técnica y cuántos registros quedaron.') }}
+{% endblock %}

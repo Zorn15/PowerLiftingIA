@@ -1,0 +1,8 @@
+# Secretos y datos pesados (se regeneran con el pipeline)
+.env
+data/raw/*
+!data/raw/.gitkeep
+data/processed/powerlifting_limpio.parquet
+reports/.pipeline_ok
+__pycache__/
+.ipynb_checkpoints/

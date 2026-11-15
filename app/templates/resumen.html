@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import kpi, seccion %}
+{% block titulo %}Resumen{% endblock %}
+{% block encabezado %}Resumen{% endblock %}
+{% block descripcion %}Cifras clave del dataset y del modelo.{% endblock %}
+{% block contenido %}
+{% set calidad = doc.calidad_datos %}
+{% set metricas = info_modelo.metricas %}
+
+<div class="alert alert-primary shadow-sm">
+  <strong>Pregunta de negocio:</strong> ¿Qué factores explican el rendimiento de un atleta de powerlifting y se puede estimar su total antes de que compita?
+</div>
+
+{{ seccion('Dataset', 'Tamaño de los datos antes y después de la limpieza.') }}
+<div class="row g-3">
+  <div class="col-6 col-lg-3">{{ kpi('Registros originales', dataset.registros|miles, dataset.columnas ~ ' columnas') }}</div>
+  <div class="col-6 col-lg-3">{{ kpi('Registros limpios', calidad.registros_limpios|miles, (dataset.registros - calidad.registros_limpios)|miles ~ ' filas eliminadas') }}</div>
+  <div class="col-6 col-lg-3">{{ kpi('Filas para medir rendimiento', calidad.registros_rendimiento|miles, 'Competencia completa y resultado válido') }}</div>
+  <div class="col-6 col-lg-3">{{ kpi('Periodo', periodo, 'Años con competencias') }}</div>
+  <div class="col-6 col-lg-3">{{ kpi('Países', paises, color='gris') }}</div>
+  <div class="col-6 col-lg-3">{{ kpi('Federaciones', federaciones, color='gris') }}</div>
+  <div class="col-6 col-lg-3">{{ kpi('Participaciones de mujeres', mujeres|coma ~ ' %', color='naranja') }}</div>
+  <div class="col-6 col-lg-3">{{ kpi('Participaciones de hombres', hombres|coma ~ ' %') }}</div>
+</div>
+
+{{ seccion('Modelo de Machine Learning', 'Estima el total (kg) de un atleta. Resultados sobre atletas que el modelo no vio.') }}
+<div class="row g-3">
+  <div class="col-6 col-lg-3">{{ kpi('Mejor modelo', info_modelo.algoritmo, info_modelo.tarea, 'verde') }}</div>
+  <div class="col-6 col-lg-3">{{ kpi('MAE en prueba', metricas['MAE']|coma ~ ' kg', metricas['mejora_MAE_%']|coma ~ ' % menos error que la línea base', 'verde') }}</div>
+  <div class="col-6 col-lg-3">{{ kpi('R² en prueba', metricas['R2']|coma(2), 'Cuanto más cerca de 1, mejor', 'verde') }}</div>
+  <div class="col-6 col-lg-3">{{ kpi('MAE de la línea base', info_modelo.linea_base['MAE']|coma ~ ' kg', 'Predecir siempre el promedio', 'gris') }}</div>
+</div>
+
+<p class="small text-secondary mt-4">Procesado con {{ doc.metadata.herramienta_procesamiento }}. Fuente: {{ dataset.nombre }}.</p>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import grafica, seccion, filtros_form %}
+{% block titulo %}Visualizaciones{% endblock %}
+{% block encabezado %}Visualizaciones{% endblock %}
+{% block descripcion %}Gráficas interactivas que cambian con los filtros.{% endblock %}
+{% block contenido %}
+{{ filtros_form(filtros, participaciones) }}
+
+{% if not figuras %}
+<div class="alert alert-info">No hay datos con los filtros elegidos.</div>
+{% else %}
+
+{{ seccion('Participación', 'Cuántas participaciones hay por año y por lugar.') }}
+<div class="row g-3">
+  <div class="col-lg-6">{{ grafica('g_anio', 'Participaciones por año y sexo', figuras.anio) }}</div>
+  <div class="col-lg-6">
+    {% if filtros.continente == 'Todos' %}
+    {{ grafica('g_lugar', 'Participaciones por continente', figuras.lugar, 'Elija un continente en los filtros para bajar al detalle por país.') }}
+    {% else %}
+    {{ grafica('g_lugar', 'Países de ' ~ filtros.continente ~ ' con más participaciones', figuras.lugar) }}
+    {% endif %}
+  </div>
+</div>
+
+{% if figuras.edad %}
+{{ seccion('Rendimiento', 'Solo competencias completas con resultado válido. Dots es un puntaje que permite comparar atletas de distinto peso corporal.') }}
+<div class="row g-3">
+  <div class="col-lg-6">{{ grafica('g_edad', 'Mediana de Dots por edad', figuras.edad) }}</div>
+  <div class="col-lg-6">{{ grafica('g_equipo', 'Mediana del total por sexo y equipo', figuras.equipo) }}</div>
+  <div class="col-lg-6">{{ grafica('g_dots', 'Distribución del puntaje Dots', figuras.dots) }}</div>
+  <div class="col-lg-6">{{ grafica('g_grupo', 'Mediana de Dots por grupo de edad y equipo', figuras.grupo) }}</div>
+</div>
+{% else %}
+<div class="alert alert-info mt-4">Con estos filtros no hay competencias completas con resultado válido.</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,24 @@
+/* Ajustes propios encima de Bootstrap 5. Casi todo el diseño usa las clases de Bootstrap. */
+body { background-color: #f4f6f9; }
+
+/* Tarjetas de indicadores */
+.kpi { border-left: .3rem solid var(--bs-primary); }
+.kpi.verde { border-left-color: var(--bs-success); }
+.kpi.naranja { border-left-color: #fd7e14; }
+.kpi.gris { border-left-color: var(--bs-secondary); }
+.kpi.rojo { border-left-color: var(--bs-danger); }
+.kpi .etiqueta { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--bs-secondary); }
+.kpi .valor { font-size: 1.6rem; font-weight: 700; line-height: 1.25; }
+
+/* Número grande del límite estimado */
+.limite { font-size: 3.6rem; font-weight: 800; line-height: 1; }
+.limite small { font-size: 1.4rem; font-weight: 600; }
+
+/* Tablas largas: altura fija con desplazamiento y encabezado visible */
+.tabla-larga { max-height: 420px; overflow: auto; }
+.tabla-larga thead th { position: sticky; top: 0; background: #fff; white-space: nowrap; box-shadow: inset 0 -1px 0 #dee2e6; }
+.tabla-larga td { white-space: nowrap; }
+
+/* Enlace activo de la barra superior */
+.navbar .nav-link.active { background: var(--bs-primary); color: #fff !important; border-radius: .375rem; }
+.navbar .nav-link { padding-left: .8rem !important; padding-right: .8rem !important; }

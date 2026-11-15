@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import kpi, seccion, grafica %}
+{% block titulo %}Mi predicción{% endblock %}
+{% block encabezado %}Predictor de fuerza en powerlifting{% endblock %}
+{% block descripcion %}Estima su límite de fuerza, el rango alcanzable, cuándo empieza a bajar y su posición en el ranking.{% endblock %}
+{% block contenido %}
+
+{# ------------------------------- Formulario ------------------------------- #}
+<form method="post" action="{{ url_for('pagina_prediccion') }}#resultado" class="card shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold"><i class="bi bi-person-lines-fill text-primary"></i> Sus datos</div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label" for="nombre">Nombre</label>
+        <input class="form-control" type="text" id="nombre" name="nombre" maxlength="40" placeholder="Su nombre" value="{{ perfil.nombre }}">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label" for="sexo">Sexo</label>
+        <select class="form-select" id="sexo" name="sexo">{% for o in ['Hombres', 'Mujeres'] %}<option {{ 'selected' if perfil.sexo == o }}>{{ o }}</option>{% endfor %}</select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label" for="edad">Edad (años)</label>
+        <input class="form-control" type="number" id="edad" name="edad" min="14" max="75" value="{{ perfil.edad }}" required>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label" for="peso">Peso corporal (kg)</label>
+        <input class="form-control" type="number" id="peso" name="peso" min="35" max="200" step="0.1" value="{{ perfil.peso }}" required>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label" for="altura">Altura (cm)</label>
+        <input class="form-control" type="number" id="altura" name="altura" min="130" max="220" value="{{ perfil.altura }}" required>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label" for="equipo">Equipo</label>
+        <select class="form-select" id="equipo" name="equipo">
+          <option value="Raw" {{ 'selected' if perfil.equipo == 'Raw' }}>Raw (sin equipo de soporte)</option>
+          <option value="Single-ply" {{ 'selected' if perfil.equipo == 'Single-ply' }}>Single-ply (traje de una capa)</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-4">
+        <label class="form-label" for="previas">Competencias previas</label>
+        <input class="form-control" type="number" id="previas" name="previas" min="0" max="200" value="{{ perfil.previas }}">
+      </div>
+      <div class="col-6 col-md-4">
+        <label class="form-label" for="experiencia">Años compitiendo</label>
+        <input class="form-control" type="number" id="experiencia" name="experiencia" min="0" max="50" step="0.5" value="{{ perfil.experiencia }}">
+      </div>
+    </div>
+
+    <hr>
+    <div class="fw-semibold">Marcas actuales <span class="badge text-bg-warning">Recomendado</span></div>
+    <p class="small text-secondary">Su mejor repetición en cada levantamiento. Con las tres marcas el resultado es personal; sin ellas solo se describe a un atleta típico de su perfil.</p>
+    <div class="row g-3 align-items-end">
+      <div class="col-6 col-md-3">
+        <label class="form-label" for="sentadilla">Sentadilla (kg)</label>
+        <input class="form-control" type="number" id="sentadilla" name="sentadilla" min="0" max="600" step="0.5" value="{{ perfil.sentadilla }}">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label" for="banca">Press de banca (kg)</label>
+        <input class="form-control" type="number" id="banca" name="banca" min="0" max="450" step="0.5" value="{{ perfil.banca }}">
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label" for="muerto">Peso muerto (kg)</label>
+        <input class="form-control" type="number" id="muerto" name="muerto" min="0" max="600" step="0.5" value="{{ perfil.muerto }}">
+      </div>
+      <div class="col-6 col-md-3 d-grid">
+        <button class="btn btn-primary btn-lg" type="submit"><i class="bi bi-lightning-charge-fill"></i> Predecir</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+{# ------------------------------- Sin resultado todavía ------------------------------- #}
+{% if not r %}
+<div class="card shadow-sm text-center">
+  <div class="card-body py-5 text-secondary">
+    <i class="bi bi-graph-up-arrow display-4 text-primary"></i>
+    <h2 class="h5 text-body mt-3">Todavía no hay predicción</h2>
+    <p class="mb-0">Llene el formulario y pulse <strong>Predecir</strong>. Se compara con {{ total_atletas|miles }} atletas del dataset.</p>
+  </div>
+</div>
+
+{% else %}
+{# ------------------------------- Resultado ------------------------------- #}
+<div id="resultado" style="scroll-margin-top: 80px"></div>
+
+{% if not r.tiene_marcas %}
+<div class="alert alert-warning shadow-sm"><i class="bi bi-exclamation-triangle"></i>
+  <strong>Este resultado no es personal.</strong> Sin sus tres marcas, se muestra lo que levanta un atleta que ya compite con su perfil. Escriba sus marcas para una estimación propia.
+</div>
+{% elif not r.por_cohorte %}
+<div class="alert alert-warning shadow-sm"><i class="bi bi-exclamation-triangle"></i>
+  No hay suficientes atletas en el dataset que hayan empezado con un nivel como el suyo. Se muestra el rango de un atleta que ya compite con su perfil, que puede quedar muy por encima de su nivel actual.
+</div>
+{% endif %}
+
+<div class="row g-3">
+  {# Tarjeta principal: límite estimado #}
+  <div class="col-lg-7">
+    <div class="card text-bg-primary shadow h-100">
+      <div class="card-body p-4">
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <span class="badge text-bg-light">Categoría IPF {{ r.puesto.categoria }}</span>
+          <span class="badge text-bg-light">Nivel: {{ r.nivel }}</span>
+          <span class="badge text-bg-light">IMC {{ r.imc|coma }}</span>
+        </div>
+        <div class="text-uppercase small fw-semibold opacity-75">
+          {{ 'Límite estimado de ' ~ r.nombre if r.por_cohorte else 'Límite de un atleta que compite con su perfil' }}
+        </div>
+        <div class="limite my-2">{{ r.limite|coma }} <small>kg</small></div>
+        <div class="opacity-75 small mb-2">Total: sentadilla + press de banca + peso muerto</div>
+        <p class="mb-0">
+          {% if r.en_pico %}Ya está en la edad en la que suelen lograr su mejor marca.
+          {% else %}Se alcanzaría hacia los <strong>{{ r.edad_pico }} años</strong> (en {{ r.faltan_pico }} años), si sigue entrenando y compitiendo.{% endif %}
+          {% if r.por_cohorte %}Es la mediana de {{ r.atletas_cohorte|miles }} atletas que empezaron con un nivel parecido y siguieron compitiendo al menos {{ r.anios_carrera }} años.{% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  {# Situación de hoy #}
+  <div class="col-lg-5">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white fw-semibold">Hoy <span class="fw-normal text-secondary small">({{ 'con sus marcas' if r.tiene_marcas else 'estimado por el modelo' }})</span></div>
+      <ul class="list-group list-group-flush">
+        <li class="list-group-item d-flex justify-content-between align-items-center">Total<span class="fs-5 fw-bold">{{ r.total_hoy|coma }} kg</span></li>
+        <li class="list-group-item d-flex justify-content-between align-items-center">Fuerza relativa<span class="fs-5 fw-bold">{{ r.relativa|coma(2) }} × su peso</span></li>
+        <li class="list-group-item d-flex justify-content-between align-items-center">Puntos Dots<span class="fs-5 fw-bold text-primary">{{ r.dots|coma }}</span></li>
+        <li class="list-group-item d-flex justify-content-between align-items-center">Le falta para su límite<span class="fs-5 fw-bold text-success">+{{ (r.limite - r.total_hoy)|coma }} kg</span></li>
+      </ul>
+      <div class="card-footer bg-white small text-secondary">Fuerza relativa: total dividido por peso corporal. Dots: puntaje que compara atletas de distinto peso.</div>
+    </div>
+  </div>
+</div>
+
+{# Rango alcanzable #}
+{% if r.por_cohorte %}
+{{ seccion('Rango alcanzable', 'Se buscaron ' ~ r.atletas_cohorte|miles ~ ' atletas del dataset con su mismo sexo y equipo, edad de inicio a ±' ~ r.ventana_edad ~ ' años y Dots a ±' ~ (r.ventana_dots * 100)|coma(0) ~ ' % del suyo, que compitieron al menos ' ~ r.anios_carrera ~ ' años. Se midió cuánto mejoró cada uno frente a su primera competencia.') }}
+{% else %}
+{{ seccion('Rango alcanzable', 'Lo que levantan en su mejor edad los atletas que ya compiten con su mismo perfil (sexo, peso, edad, equipo y experiencia).') }}
+{% endif %}
+<div class="row g-3">
+  <div class="col-6 col-lg-3">{{ kpi('Fuerza mínima alcanzable', r.limites.p10|coma(0) ~ ' kg', '9 de cada 10 llegaron más alto', 'gris') }}</div>
+  <div class="col-6 col-lg-3">{{ kpi('Límite típico', r.limites.p50|coma(0) ~ ' kg', 'La mitad llegó más alto y la mitad no') }}</div>
+  <div class="col-6 col-lg-3">{{ kpi('Fuerza máxima alcanzable', r.limites.p90|coma(0) ~ ' kg', 'Solo 1 de cada 10 llegó más alto', 'verde') }}</div>
+  <div class="col-6 col-lg-3">
+    {% if r.edad_baja is none %}
+    {{ kpi('Empieza a bajar', 'Después de los 75', 'Su nivel no baja 2 % antes de esa edad', 'rojo') }}
+    {% elif r.faltan_baja > 0 %}
+    {{ kpi('Empieza a bajar', r.edad_baja ~ ' años', 'En ' ~ r.faltan_baja ~ ' años: baja 2 % desde su pico', 'rojo') }}
+    {% else %}
+    {{ kpi('Empieza a bajar', r.edad_baja ~ ' años', 'Baja 2 % desde su pico', 'rojo') }}
+    {% endif %}
+  </div>
+</div>
+
+{# Los tres levantamientos #}
+{{ seccion('Sus levantamientos', 'Frente a los atletas de su categoría.' if r.tiene_marcas else 'Sin marcas propias, el total estimado se reparte con la proporción típica de su categoría.') }}
+<div class="row g-3">
+  {% for l in r.puesto.levantamientos %}
+  <div class="col-md-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fw-semibold">{{ l.nombre }}</span>
+          <span class="badge text-bg-light border">{{ l.percentil|posicion }}</span>
+        </div>
+        <div class="fs-3 fw-bold">{{ l.kg|coma }} <small class="fs-6 text-secondary">kg</small></div>
+        <div class="small text-secondary mb-2">{{ l.veces_peso|coma(2) }} × su peso</div>
+        <div class="progress" role="progressbar" aria-label="Posición en {{ l.nombre }}" aria-valuenow="{{ l.percentil|round|int }}" aria-valuemin="0" aria-valuemax="100" style="height: .5rem">
+          <div class="progress-bar" style="width: {{ [l.percentil, 2]|max|round|int }}%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# Ranking #}
+{{ seccion('Su posición en el ranking', 'Frente a la mejor marca de cada atleta del dataset (' ~ perfil.sexo|lower ~ ', ' ~ perfil.equipo ~ ').') }}
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <div class="fs-5 fw-semibold">Supera al <span class="text-primary">{{ r.puesto.percentil_categoria|coma }} %</span> de los {{ r.puesto.atletas_categoria|miles }} atletas de la categoría {{ r.puesto.categoria }}</div>
+    <div class="text-secondary small mb-3">
+      Puesto aproximado: {{ r.puesto.puesto_categoria|miles }} de {{ (r.puesto.atletas_categoria + 1)|miles }}. La mediana de la categoría es {{ r.puesto.mediana_categoria|coma(0) }} kg.
+      Con su límite estimado ({{ r.limite|coma(0) }} kg) superaría al {{ r.percentil_limite|coma }} % de los atletas actuales de la categoría.
+    </div>
+    <div class="progress-stacked" style="height: 1rem">
+      <div class="progress" role="progressbar" aria-label="Hoy" aria-valuenow="{{ r.puesto.percentil_categoria|round|int }}" aria-valuemin="0" aria-valuemax="100" style="width: {{ [r.puesto.percentil_categoria, 1]|max }}%"><div class="progress-bar"></div></div>
+      {% if r.percentil_limite > r.puesto.percentil_categoria %}
+      <div class="progress" role="progressbar" aria-label="Con su límite" aria-valuenow="{{ r.percentil_limite|round|int }}" aria-valuemin="0" aria-valuemax="100" style="width: {{ r.percentil_limite - [r.puesto.percentil_categoria, 1]|max }}%"><div class="progress-bar bg-info"></div></div>
+      {% endif %}
+    </div>
+    <div class="d-flex justify-content-between small text-secondary mt-1"><span>Más bajo</span><span><span class="badge text-bg-primary">Hoy</span> <span class="badge text-bg-info">Con su límite</span></span><span>Más alto</span></div>
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-md-4">{{ kpi('Ranking por Dots', r.puesto.percentil_dots|posicion, 'Frente a ' ~ r.puesto.atletas_sexo|miles ~ ' atletas, sin importar el peso') }}</div>
+  <div class="col-md-4">{{ kpi('Ranking por fuerza relativa', r.puesto.percentil_relativa|posicion, 'Total dividido por peso corporal') }}</div>
+  <div class="col-md-4">{{ kpi('Nivel', r.nivel, 'Según el percentil de Dots', 'gris') }}</div>
+</div>
+
+{# Gráficas #}
+<div class="row g-3 mt-2">
+  <div class="col-lg-6">{{ grafica('g_curva', 'Curva de fuerza por edad', r.grafica_curva) }}</div>
+  <div class="col-lg-6">{{ grafica('g_categoria', 'Distribución de la categoría ' ~ r.puesto.categoria, r.grafica_categoria) }}</div>
+</div>
+
+{# Atletas parecidos #}
+{{ seccion('Atletas con un perfil parecido', 'Atletas reales del dataset con el mismo sexo y equipo, peso a ±2,5 kg, edad a ±3 años y el total más cercano al suyo.') }}
+{% if r.similares %}
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>Atleta</th><th>País</th><th class="text-end">Año</th><th class="text-end">Edad</th><th class="text-end">Peso (kg)</th><th class="text-end">Sentadilla</th><th class="text-end">Banca</th><th class="text-end">Peso muerto</th><th class="text-end">Total (kg)</th><th class="text-end">Dots</th></tr></thead>
+      <tbody>
+        {% for a in r.similares %}
+        <tr>
+          <td>{{ a.nombre }}</td><td>{{ a.pais }}</td><td class="text-end">{{ a.anio }}</td><td class="text-end">{{ a.edad|coma(0) }}</td>
+          <td class="text-end">{{ a.peso_corporal_kg|coma }}</td><td class="text-end">{{ a.sentadilla_kg|coma }}</td><td class="text-end">{{ a.banca_kg|coma }}</td>
+          <td class="text-end">{{ a.peso_muerto_kg|coma }}</td><td class="text-end fw-semibold">{{ a.total_kg|coma }}</td><td class="text-end">{{ a.dots|coma }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-info">No hay atletas con un perfil tan parecido en el dataset.</div>
+{% endif %}
+
+{# Cómo leer el resultado #}
+<div class="alert alert-light border shadow-sm mt-4 mb-0">
+  <strong>Cómo leer el resultado.</strong>
+  {% if r.por_cohorte %}
+  El límite sale de atletas reales del dataset que empezaron con un nivel parecido al suyo y siguieron compitiendo al menos {{ r.anios_carrera }} años: se mide cuánto mejoró cada uno desde su primera competencia.
+  Solo incluye a quienes siguieron compitiendo; quien deja de entrenar queda fuera, así que el resultado es optimista.
+  La edad del pico es la mediana de edad en la que esos atletas lograron su mejor marca, y la edad de descenso sale de comparar a cada atleta consigo mismo.
+  {% else %}
+  El modelo compara su perfil con atletas que compiten en federaciones; quien no compite suele estar por debajo de ese grupo. Supone que mantiene su peso y sigue entrenando. El error típico del modelo es de {{ r.mae|coma(0) }} kg.
+  {% endif %}
+  La altura solo se usa para el IMC: el dataset no la registra, así que no entra al cálculo.
+</div>
+{% endif %}
+{% endblock %}

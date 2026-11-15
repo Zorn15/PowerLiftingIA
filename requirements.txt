@@ -1,0 +1,14 @@
+# Contenedor de procesamiento (versiones con las que se probó el proyecto)
+pandas==3.0.5
+numpy==2.5.3
+pyarrow==26.0.1
+scikit-learn==1.9.1
+joblib==1.6.0
+matplotlib==3.11.2
+psutil==7.2.2
+pymongo==4.20.0
+reportlab==5.0.1
+nbformat
+nbconvert==7.17.2
+ipykernel
+jupyterlab>=4,<5

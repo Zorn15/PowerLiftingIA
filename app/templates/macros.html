@@ -1,0 +1,95 @@
+{# Componentes que se repiten en varias páginas #}
+
+{% macro kpi(etiqueta, valor, nota='', color='') %}
+<div class="card shadow-sm h-100 kpi {{ color }}">
+  <div class="card-body py-3">
+    <div class="etiqueta">{{ etiqueta }}</div>
+    <div class="valor">{{ valor }}</div>
+    {% if nota %}<div class="small text-secondary">{{ nota }}</div>{% endif %}
+  </div>
+</div>
+{% endmacro %}
+
+{% macro seccion(titulo, descripcion='') %}
+<div class="mt-4 mb-3">
+  <h2 class="h5 fw-bold mb-1">{{ titulo }}</h2>
+  {% if descripcion %}<p class="text-secondary small mb-0">{{ descripcion }}</p>{% endif %}
+</div>
+{% endmacro %}
+
+{# Tarjeta con una gráfica de Plotly. figura es el JSON que devuelve graficas.py #}
+{% macro grafica(identificador, titulo, figura, pie='') %}
+<div class="card shadow-sm h-100">
+  <div class="card-header bg-white fw-semibold">{{ titulo }}</div>
+  <div class="card-body p-2">
+    <div id="{{ identificador }}"></div>
+    {% if pie %}<div class="small text-secondary px-2 pb-1">{{ pie }}</div>{% endif %}
+  </div>
+</div>
+<script>
+  (function () {
+    var figura = {{ figura|safe }};
+    Plotly.newPlot('{{ identificador }}', figura.data, figura.layout, {responsive: true, displayModeBar: false});
+  })();
+</script>
+{% endmacro %}
+
+{# Tarjeta con una tabla larga #}
+{% macro tabla(titulo, html, pie='') %}
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white fw-semibold">{{ titulo }}</div>
+  <div class="tabla-larga">{{ html|safe }}</div>
+  {% if pie %}<div class="card-footer bg-white small text-secondary">{{ pie }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{# Formulario de filtros de Datos y Visualizaciones #}
+{% macro filtros_form(filtros, participaciones) %}
+<form method="get" class="card shadow-sm mb-4">
+  <div class="card-body">
+    <div class="row g-3 align-items-end">
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-semibold" for="desde">Desde el año</label>
+        <input class="form-control" type="number" id="desde" name="desde" min="{{ filtros.anio_min }}" max="{{ filtros.anio_max }}" value="{{ filtros.desde }}">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small fw-semibold" for="hasta">Hasta el año</label>
+        <input class="form-control" type="number" id="hasta" name="hasta" min="{{ filtros.anio_min }}" max="{{ filtros.anio_max }}" value="{{ filtros.hasta }}">
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="form-label small fw-semibold">Sexo</div>
+        {% for opcion in ['Hombres', 'Mujeres'] %}
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="sexo" value="{{ opcion }}" id="sexo_{{ opcion }}" {{ 'checked' if opcion in filtros.sexos }}>
+          <label class="form-check-label" for="sexo_{{ opcion }}">{{ opcion }}</label>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="form-label small fw-semibold">Equipo</div>
+        {% for opcion in ['Raw', 'Single-ply', 'Wraps'] %}
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="equipo" value="{{ opcion }}" id="equipo_{{ opcion }}" {{ 'checked' if opcion in filtros.equipos }}>
+          <label class="form-check-label" for="equipo_{{ opcion }}">{{ opcion }}</label>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small fw-semibold" for="continente">Continente</label>
+        <select class="form-select" id="continente" name="continente">
+          <option {{ 'selected' if filtros.continente == 'Todos' }}>Todos</option>
+          {% for opcion in filtros.continentes %}<option {{ 'selected' if filtros.continente == opcion }}>{{ opcion }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-grid">
+        <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Aplicar filtros</button>
+      </div>
+    </div>
+  </div>
+  <div class="card-footer bg-white small text-secondary">
+    <strong class="text-body">{{ participaciones|miles }}</strong> participaciones con estos filtros.
+    Raw: sin equipo de soporte. Single-ply: traje de una capa. Wraps: vendas de rodilla.
+    Al elegir un continente, la gráfica por lugar baja al detalle por país.
+  </div>
+</form>
+{% endmacro %}

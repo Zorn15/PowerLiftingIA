@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Predictor de fuerza{% endblock %} · Powerlifting Big Data</title>
+  <!-- Bootstrap 5 e íconos, incluidos en el proyecto (no necesita internet) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-icons.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilos.css') }}">
+  <script src="{{ url_for('plotly_js') }}"></script>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
+  <div class="container-xl">
+    <a class="navbar-brand fw-bold" href="{{ url_for('pagina_prediccion') }}"><i class="bi bi-lightning-charge-fill text-warning"></i> Powerlifting · Big Data</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu" aria-controls="menu" aria-expanded="false" aria-label="Abrir menú">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="menu">
+      <ul class="navbar-nav ms-auto gap-lg-1">
+        {% for clave, ruta, icono, texto in [
+            ('prediccion', 'pagina_prediccion', 'bi-lightning-charge', 'Mi predicción'),
+            ('resumen', 'pagina_resumen', 'bi-speedometer2', 'Resumen'),
+            ('datos', 'pagina_datos', 'bi-table', 'Datos'),
+            ('visualizaciones', 'pagina_visualizaciones', 'bi-bar-chart', 'Visualizaciones'),
+            ('modelo', 'pagina_modelo', 'bi-cpu', 'Modelo'),
+            ('insights', 'pagina_insights', 'bi-lightbulb', 'Insights y reporte')] %}
+        <li class="nav-item">
+          <a class="nav-link {{ 'active' if pagina == clave }}" href="{{ url_for(ruta) }}"><i class="bi {{ icono }}"></i> {{ texto }}</a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<main class="container-xl py-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+      <h1 class="h3 fw-bold mb-1">{% block encabezado %}{% endblock %}</h1>
+      <p class="text-secondary mb-0">{% block descripcion %}{% endblock %}</p>
+    </div>
+    {% if doc %}
+    <div>
+      <span class="badge text-bg-light border">{{ dataset.registros|miles }} registros</span>
+      <span class="badge text-bg-light border">Periodo {{ periodo }}</span>
+      <span class="badge text-bg-light border">Modelo: {{ info_modelo.algoritmo }}</span>
+      <span class="badge text-bg-success"><i class="bi bi-database-check"></i> MongoDB conectado</span>
+    </div>
+    {% endif %}
+  </div>
+  {% block contenido %}{% endblock %}
+</main>
+
+<footer class="container-xl pb-4 small text-secondary">
+  Proyecto final de Gerencia y Almacenamiento en Big Data · Dataset OpenIPF (OpenPowerlifting)
+  {% if doc %}· Análisis del {{ doc.metadata.fecha_analisis }} · {{ doc.metadata.autores|join(', ') }}{% endif %}
+</footer>
+
+<script src="{{ url_for('static', filename='bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>
